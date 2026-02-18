@@ -94,3 +94,40 @@ th, td { padding: 12px; text-align: left; border-bottom: 1px solid #222; }
 .banner-content { background: var(--red-deep); padding: 40px; border: 3px solid var(--gold); border-radius: 15px; text-align:center; }
 
 @media (max-width: 600px) { .container { grid-template-columns: repeat(2, 1fr); } }
+/* Nâng cấp giao diện Cung Đình */
+.front {
+    background: var(--red-card);
+    background-image: url("https://www.transparenttextures.com/patterns/paper-fibers.png"); /* Texture giấy cũ */
+    border: 3px double var(--gold-dark);
+}
+
+.front::after {
+    content: "囍"; /* Biểu tượng Song Hỷ hoặc Phúc */
+    font-size: 1.2rem;
+    position: absolute;
+    bottom: 10px;
+    opacity: 0.5;
+}
+
+/* Hiệu ứng tia sáng rực rỡ cho bao 100k */
+.type-big::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(241, 196, 15, 0.4), transparent);
+    animation: rotateRay 3s linear infinite;
+    z-index: -1;
+}
+
+@keyframes rotateRay {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Banner kết quả kiểu hoàng gia */
+.banner-content {
+    background: url('https://www.transparenttextures.com/patterns/red-leather.png'), var(--red-mid);
+    border: 5px double var(--gold);
+    box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 30px var(--red-deep);
+}
