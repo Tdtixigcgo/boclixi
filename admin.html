@@ -3,54 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Lì Xì Manager</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="admin-body">
-    <div id="admin-login" class="admin-overlay">
-        <div class="login-card">
-            <h3>Quản Trị Viên</h3>
-            <input type="password" id="admin-pw" placeholder="Mật khẩu...">
-            <button onclick="login()">Đăng Nhập</button>
-        </div>
-    </div>
-
-    <div id="admin-panel" class="admin-container hidden">
-        <header class="admin-header">
-            <h2>DASHBOARD 2026</h2>
-            <div class="admin-actions">
-                <button onclick="exportCSV()">📥 Xuất CSV</button>
-                <button class="danger" onclick="resetSystem()">🗑 Reset Toàn Bộ</button>
-                <button onclick="logout()">⇠ Thoát</button>
-            </div>
-        </header>
-
-        <div class="stats-grid">
-            <div class="stat-card"><h4>Tổng lượt</h4><p id="stat-total">0</p></div>
-            <div class="stat-card"><h4>Tổng tiền</h4><p id="stat-money">0đ</p></div>
-            <div class="stat-card"><h4>Hôm nay</h4><p id="stat-today">0</p></div>
-            <div class="stat-card"><h4>Trung bình</h4><p id="stat-avg">0đ</p></div>
-        </div>
-
-        <div class="table-container">
-            <div class="table-tools">
-                <input type="text" id="search" placeholder="Tìm tên..." oninput="renderTable()">
-            </div>
-            <table id="log-table">
-                <thead>
-                    <tr>
-                        <th>Tên</th>
-                        <th>Số tiền</th>
-                        <th>ID Thiết bị</th>
-                        <th>Thời gian</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
-        </div>
-    </div>
-    <script src="script.js"></script>
-</body>
-</html>
+    <title>Admin — Quản Trị Lì Xì 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --surface: #13131a;
+            --surface2: #1a1a26;
+            --gold: #f1c40f;
+            --gold-dim: #b8860b;
+            --gold-glow: rgba(241,196,15,0.15);
+            --red: #c0392b;
+            --green: #27ae60;
+            --text: #e8e0cc;
+            --text-dim: #8a7a6a;
+            --border: rgba(241,196,15,0.2);
+            --danger: #e74c3c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        /* ===== LOGIN ===== */
+        #login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 50% 30%, #1a1020 0%, #0a0a0f 70%);
+        }
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(241,196,15,0.08);
+        }
+        .login-icon { font-size: 3rem; margin-bottom: 12px; }
+        .login-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 1.8rem;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+        .login-subtitle { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 32px; font-family: 'JetBrains Mono', monospace; }
+        .login-input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            margin-bottom: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .login-input:focus { border-color: var(--gold); }
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            color: #1a0000;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .login-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .login-btn:active { transform: translateY(0); }
+        .login-error {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            display: none;
+        }
+        /* ===== APP ===== */
+        #app-screen { display: none; }
+        .admin-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .admin-logo {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 1.4rem;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-gold { background: var(--gold-glow); border-color: var(--gold); color: var(--gold); }
+        .btn-gold:hover { background: var(--gold); color: #1a0000; }
+        .btn-danger { background: rgba(231,76,60,0.1); border-color: var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-dim { background: transparent; border-color: var(--text-dim); color: var(--text-dim); }
+        .btn-dim:hover { border-color: var(--text); color: var(--text); }
+        .admin-body { padding: 32px; max-width: 1200px; margin: 0 auto; }
+        /* Stats */
