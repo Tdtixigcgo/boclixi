@@ -1,325 +1,132 @@
-/* ============================================================
-   LÌ XÌ TÂM CƠ 2026 — script.js
-   Bộ não: Khóa thiết bị · Thao túng kết quả · Pháo hoa
-   ============================================================ */
+const USER_PRIZES = [2000, 5000, 10000, 15000, 18000];
+const BIG_PRIZE = 100000;
+const SMALL_OTHERS = [1000, 2000, 5000, 10000, 20000, 50000];
+const TOTAL_CARDS = 12;
+const BIG_IN_OTHERS = 5;
 
-'use strict';
-
-// ── DOM refs ─────────────────────────────────────────────────
-const grid    = document.getElementById('lixi-grid');
-const blocker = document.getElementById('blocker-overlay');
-const errText = document.getElementById('error-text');
-const hintTxt = document.getElementById('hint-text');
-const resBanner = document.getElementById('result-banner');
-const resAmount = document.getElementById('result-amount');
-const resRegret = document.getElementById('result-regret');
-
-// ── Prize config ─────────────────────────────────────────────
-const USER_PRIZES   = [2000, 5000, 10000, 15000, 18000]; // user chỉ trúng đây
-const BIG_PRIZE     = 100000;
-const SMALL_OTHERS  = [1000, 2000, 5000, 10000, 20000, 50000];
-const TOTAL_CARDS   = 12;
-const BIG_IN_OTHERS = 5;  // số bao 100k để user tiếc nuối
-
-// ── State ─────────────────────────────────────────────────────
-let prizes      = [];   // mảng 12 phần tử
-let userIndex   = -1;
-let hasPicked   = false;
-
-/* ── Audio Engine (Web Audio API) ────────────────────────────
-   Không cần file ngoài, tạo âm thanh trực tiếp                */
+let hasPicked = false;
 let audioCtx = null;
 
+// --- Device Lock ---
+function generateDeviceId() {
+    const parts = [navigator.userAgent, `${screen.width}x${screen.height}`, Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.language].join('||');
+    let hash = 2166136261;
+    for (let i = 0; i < parts.length; i++) {
+        hash ^= parts.charCodeAt(i);
+        hash = (hash * 16777619) >>> 0;
+    }
+    return `lixi2026_${hash.toString(36)}`;
+}
+
+function checkDevice() {
+    const id = generateDeviceId();
+    if (localStorage.getItem(id) === 'picked') {
+        document.getElementById('blocker-overlay').classList.remove('hidden');
+        return true;
+    }
+    return false;
+}
+
+// --- Audio Engine ---
 function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
 }
 
-/**
- * Tiếng "Ting" cao trong trẻo khi lật bao
- */
 function playTing(pitch = 1.0) {
-    const ctx  = getAudioCtx();
-    const osc  = ctx.createOscillator();
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    osc.connect(gain); gain.connect(ctx.destination);
     osc.type = 'sine';
     osc.frequency.setValueAtTime(1047 * pitch, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1568 * pitch, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.45, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.9);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(); osc.stop(ctx.currentTime + 0.5);
 }
 
-/**
- * Tiếng pháo hoa nổ khi hiện kết quả
- */
-function playFirework() {
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const notes = [523, 659, 784, 1047, 880, 1175];
-    notes.forEach((freq, i) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = i % 2 === 0 ? 'triangle' : 'sawtooth';
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        const t = now + i * 0.06;
-        osc.frequency.setValueAtTime(freq, t);
-        osc.frequency.exponentialRampToValueAtTime(freq * 1.4, t + 0.18);
-        gain.gain.setValueAtTime(0.18, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-        osc.start(t);
-        osc.stop(t + 0.6);
-    });
-}
-
-/* ── Device Fingerprint ──────────────────────────────────────
-   Tạo ID thiết bị đơn giản từ các thông số trình duyệt         */
-function generateDeviceId() {
-    const parts = [
-        navigator.userAgent,
-        `${screen.width}x${screen.height}x${screen.colorDepth}`,
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        navigator.language,
-        navigator.hardwareConcurrency || '?',
-    ].join('||');
-
-    // FNV-1a hash (nhẹ, không cần crypto)
-    let hash = 2166136261;
-    for (let i = 0; i < parts.length; i++) {
-        hash ^= parts.charCodeAt(i);
-        hash = (hash * 16777619) >>> 0; // unsigned 32-bit
-    }
-    return `lixi2026_${hash.toString(36)}`;
-}
-
-/* ── checkDevice ─────────────────────────────────────────────
-   Hàm chạy ngay khi load: kiểm tra đã bốc chưa                */
-function checkDevice() {
-    const deviceId = generateDeviceId();
-    const picked   = localStorage.getItem(deviceId);
-
-    if (picked === 'picked') {
-        errText.textContent = 'Mày đã bốc lì xì rồi tham lam gì :))';
-        blocker.classList.add('active');
-        return false; // blocked
-    }
-    return true; // OK
-}
-
-function markDevicePicked() {
-    localStorage.setItem(generateDeviceId(), 'picked');
-}
-
-/* ── generatePrizes ──────────────────────────────────────────
-   Tạo mảng 12 phần tử theo luật tâm cơ                        */
+// --- Game Logic ---
 function generatePrizes() {
-    // 1) Bao của user: chỉ trúng từ USER_PRIZES
-    const userAmount = USER_PRIZES[Math.floor(Math.random() * USER_PRIZES.length)];
-
-    // 2) 11 bao còn lại: 5 bao 100k + 6 bao nhỏ
-    const otherPrizes = [];
-    for (let i = 0; i < BIG_IN_OTHERS; i++)
-        otherPrizes.push({ amount: BIG_PRIZE, isBig: true, isUser: false });
-    for (let i = 0; i < TOTAL_CARDS - 1 - BIG_IN_OTHERS; i++) {
-        const amt = SMALL_OTHERS[Math.floor(Math.random() * SMALL_OTHERS.length)];
-        otherPrizes.push({ amount: amt, isBig: false, isUser: false });
+    const userWin = USER_PRIZES[Math.floor(Math.random() * USER_PRIZES.length)];
+    let others = [];
+    for(let i=0; i<BIG_IN_OTHERS; i++) others.push(BIG_PRIZE);
+    while(others.length < 11) {
+        others.push(SMALL_OTHERS[Math.floor(Math.random() * SMALL_OTHERS.length)]);
     }
-
-    // 3) Xáo trộn 11 bao kia
-    otherPrizes.sort(() => Math.random() - 0.5);
-
-    // 4) Chèn bao user vào vị trí ngẫu nhiên trong 12
-    userIndex = Math.floor(Math.random() * TOTAL_CARDS);
-    prizes = [];
-    let oi = 0;
-    for (let i = 0; i < TOTAL_CARDS; i++) {
-        if (i === userIndex) {
-            prizes.push({ amount: userAmount, isBig: false, isUser: true });
-        } else {
-            prizes.push(otherPrizes[oi++]);
-        }
-    }
+    others.sort(() => Math.random() - 0.5);
+    const userIdx = Math.floor(Math.random() * 12);
+    others.splice(userIdx, 0, userWin);
+    return { prizes: others, userIdx: userIdx };
 }
 
-/* ── Helpers ─────────────────────────────────────────────────*/
-function fmtVND(n) {
-    if (n >= 1000) return (n / 1000).toLocaleString('vi-VN') + 'k';
-    return n.toLocaleString('vi-VN') + 'đ';
-}
-
-function fmtVNDFull(n) {
-    return n.toLocaleString('vi-VN') + 'đ';
-}
-
-function buildBackClass(prize) {
-    if (prize.isUser) return 'type-user';
-    if (prize.isBig)  return 'type-big';
-    return 'type-small';
-}
-
-function buildIcon(prize) {
-    if (prize.isUser) return '🧧';
-    if (prize.isBig)  return '💰';
-    return '💸';
-}
-
-function buildTag(prize) {
-    if (prize.isUser) return '🎉 CỦA BẠN';
-    if (prize.isBig)  return '✨ JACKPOT ✨';
-    return 'lì xì';
-}
-
-/* ── renderCards ─────────────────────────────────────────────
-   Render 12 div.lixi-card vào #lixi-grid                      */
 function renderCards() {
-    grid.innerHTML = '';
-
-    prizes.forEach((prize, idx) => {
+    const grid = document.getElementById('lixi-grid');
+    const { prizes, userIdx } = generatePrizes();
+    
+    prizes.forEach((amount, i) => {
         const card = document.createElement('div');
-        card.className = 'lixi-card';
-        card.dataset.index = idx;
-
-        if (idx === userIndex) card.classList.add('is-user-card');
-
-        // "BẠN" label above user card
-        if (idx === userIndex) {
-            const lbl = document.createElement('div');
-            lbl.className = 'user-label';
-            lbl.textContent = '👆 CHỌN ĐI';
-            card.appendChild(lbl);
-        }
-
-        // Front face
-        const front = document.createElement('div');
-        front.className = 'face front';
-        front.innerHTML = `
-            <div class="front-seal">福</div>
-            <div class="front-sub">春</div>
-            <span class="corner-deco tl">✦</span>
-            <span class="corner-deco tr">✦</span>
-            <span class="corner-deco bl">✦</span>
-            <span class="corner-deco br">✦</span>
+        card.className = `lixi-card ${i === userIdx ? 'is-user-card' : ''}`;
+        card.innerHTML = `
+            ${i === userIdx ? '<div class="user-label">👆 CHỌN ĐI</div>' : ''}
+            <div class="card-inner">
+                <div class="face front">
+                    <div class="front-seal">福</div>
+                    <div class="front-sub">2026</div>
+                </div>
+                <div class="face back ${amount === BIG_PRIZE ? 'type-big' : (i === userIdx ? 'type-user' : 'type-small')}">
+                    <div style="font-size:1.5rem">🧧</div>
+                    <div style="font-weight:bold; color:white">${amount.toLocaleString()}đ</div>
+                    <div style="font-size:0.6rem; color:var(--gold)">${i === userIdx ? 'CỦA BẠN' : 'LỘC XUÂN'}</div>
+                </div>
+            </div>
         `;
-
-        // Back face
-        const back = document.createElement('div');
-        back.className = `face back ${buildBackClass(prize)}`;
-        back.innerHTML = `
-            <div class="prize-icon">${buildIcon(prize)}</div>
-            <div class="prize-amount">${fmtVNDFull(prize.amount)}</div>
-            <div class="prize-tag">${buildTag(prize)}</div>
-        `;
-
-        const inner = document.createElement('div');
-        inner.style.cssText = 'width:100%;height:100%;position:relative;transform-style:preserve-3d;';
-        inner.appendChild(front);
-        inner.appendChild(back);
-        card.appendChild(inner);
-
-        // Only user card is clickable
-        if (idx === userIndex) {
-            card.addEventListener('click', () => handleFlip(idx));
-            card.style.cursor = 'pointer';
-        } else {
-            card.style.cursor = 'default';
-        }
-
+        card.onclick = () => handleFlip(i, amount, userIdx);
         grid.appendChild(card);
     });
 }
 
-/* ── handleFlip ──────────────────────────────────────────────
-   Xử lý khi user bốc lì xì                                    */
-function handleFlip(idx) {
-    if (hasPicked) return;  // chặn click kép
+function handleFlip(index, amount, userIdx) {
+    if (hasPicked || index !== userIdx) return;
     hasPicked = true;
+    
+    const name = prompt("Nhập quý danh của bạn để nhận lộc:") || "Ẩn danh";
+    
+    // Mark device
+    const deviceId = generateDeviceId();
+    localStorage.setItem(deviceId, 'picked');
+    
+    // Log data
+    const log = JSON.parse(localStorage.getItem('lixi_log') || '[]');
+    log.push({ name, amount, time: new Date().toLocaleString(), deviceId });
+    localStorage.setItem('lixi_log', JSON.stringify(log));
 
-    // Âm thanh
-    getAudioCtx(); // unlock audio context (needs user gesture)
-    playTing(1.0);
+    // Flip animation
+    const cards = document.querySelectorAll('.lixi-card');
+    cards[index].classList.add('is-flipped');
+    playTing(1.2);
 
-    // Đánh dấu thiết bị đã bốc
-    markDevicePicked();
-
-    // Bỏ label + pointer
-    const userCard = grid.querySelector(`[data-index="${idx}"]`);
-    const lbl = userCard.querySelector('.user-label');
-    if (lbl) lbl.remove();
-    userCard.style.cursor = 'default';
-
-    // Lật bao của user
-    userCard.classList.add('is-flipped');
-
-    // Hint text
-    hintTxt.style.opacity = '0';
-
-    // Sau 900ms: lật tất cả bao còn lại (reveal all)
-    setTimeout(() => revealAll(idx), 900);
+    setTimeout(() => revealAll(cards, index), 1000);
 }
 
-/* ── revealAll ───────────────────────────────────────────────
-   Lật lần lượt 11 bao còn lại, rồi hiện kết quả               */
-function revealAll(userIdx) {
-    const allCards = grid.querySelectorAll('.lixi-card');
-    let delay = 0;
-
-    allCards.forEach((card, i) => {
-        if (i === userIdx) return; // đã lật rồi
-        delay += 55;
-        setTimeout(() => {
-            card.classList.add('is-flipped');
-            playTing(0.9 + Math.random() * 0.4);
-        }, delay);
+function revealAll(cards, userIdx) {
+    cards.forEach((card, i) => {
+        if (i !== userIdx) {
+            setTimeout(() => {
+                card.classList.add('is-flipped');
+                playTing(0.8 + Math.random() * 0.4);
+            }, i * 60);
+        }
     });
-
-    // Hiện kết quả sau khi tất cả lật xong
-    setTimeout(() => showResult(userIdx), delay + 700);
+    setTimeout(showResult, 1500);
 }
 
-/* ── showResult ──────────────────────────────────────────────
-   Hiện banner kết quả + confetti + pháo hoa                    */
-function showResult(userIdx) {
-    const userPrize = prizes[userIdx];
-
-    // Pháo hoa âm thanh
-    playFirework();
-
-    // Canvas confetti 3 đợt
-    confetti({ particleCount: 130, spread: 80, origin: { y: 0.55 }, colors: ['#f1c40f','#e74c3c','#ff0000','#ffd700','#ffffff'] });
-    setTimeout(() => {
-        confetti({ angle: 60,  spread: 55, particleCount: 80, origin: { x: 0 },   colors: ['#f1c40f','#ff6b6b'] });
-        confetti({ angle: 120, spread: 55, particleCount: 80, origin: { x: 1 },   colors: ['#f1c40f','#ff0000'] });
-    }, 350);
-
-    // Tính danh sách bao 100k để gây tiếc
-    const bigList = prizes
-        .map((p, i) => ({ ...p, num: i + 1 }))
-        .filter((p, i) => i !== userIdx && p.isBig)
-        .map(p => `<b>bao số ${p.num}</b>`)
-        .join(', ');
-
-    // Fill banner
-    resAmount.textContent = fmtVNDFull(userPrize.amount);
-    resRegret.innerHTML = `
-        Bạn nhận được <span class="hl-green">${fmtVNDFull(userPrize.amount)}</span> 🎉<br><br>
-        Nhưng mà... <span class="hl">${BIG_IN_OTHERS} bao 100.000đ</span> nằm ở: ${bigList} 😭<br><br>
-        <span style="font-size:0.8rem;opacity:0.55">Tiếc không? Thôi năm sau đến sớm nha bạn ơi~ 😂</span>
-    `;
-
-    resBanner.classList.add('show');
-    resBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function showResult() {
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    document.getElementById('result-banner').classList.remove('hidden');
+    const userLog = JSON.parse(localStorage.getItem('lixi_log')).pop();
+    document.getElementById('result-amount').innerText = userLog.amount.toLocaleString() + "đ";
+    document.getElementById('result-note').innerText = "Tiếc quá! Chỉ tí nữa là trúng 100k rồi.";
 }
 
-/* ── Init ────────────────────────────────────────────────────
-   Chạy ngay khi DOM sẵn sàng                                   */
-window.addEventListener('DOMContentLoaded', () => {
-    const allowed = checkDevice();
-    if (!allowed) return; // bị khóa → dừng lại
-
-    generatePrizes();
-    renderCards();
-});
+window.onload = () => { if(!checkDevice()) renderCards(); };
