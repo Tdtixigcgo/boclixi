@@ -10,16 +10,22 @@
 </head>
 <body>
     <div class="bg-decor">
-        <svg class="cloud" style="top:10%; left:5%" width="100" height="50" viewBox="0 0 100 50" fill="currentColor"><path d="M20 40c-5 0-10-4-10-10s5-10 10-10 10 4 10 10-5 10-10 10zm30 0c-8 0-15-7-15-15s7-15 15-15 15 7 15 15-7 15-15 15zm30 0c-5 0-10-4-10-10s5-10 10-10 10 4 10 10-5 10-10 10z" opacity="0.1"/></svg>
+        <svg class="cloud" style="top:10%; left:5%" width="100" height="50" viewBox="0 0 100 50" fill="currentColor">
+            <path d="M20 40c-5 0-10-4-10-10s5-10 10-10 10 4 10 10-5 10-10 10zm30 0c-8 0-15-7-15-15s7-15 15-15 15 7 15 15-7 15-15 15zm30 0c-5 0-10-4-10-10s5-10 10-10 10 4 10 10-5 10-10 10z" opacity="0.1"/>
+        </svg>
     </div>
 
     <div class="lantern-row">
-        <div class="lantern">🏮</div><div class="lantern">🏮</div><div class="lantern">🏮</div><div class="lantern">🏮</div><div class="lantern">🏮</div>
+        <div class="lantern">🏮</div>
+        <div class="lantern">🏮</div>
+        <div class="lantern">🏮</div>
+        <div class="lantern">🏮</div>
+        <div class="lantern">🏮</div>
     </div>
 
     <header class="site-header">
         <h1 class="calligraphy">Chúc Mừng Năm Mới 2026</h1>
-        <p class="sub-title">Nhấp vào bao lì xì may mắn dành riêng cho bạn</p>
+        <p class="sub-title">Nhấp vào bao lì xì bất kỳ để thử vận may</p>
     </header>
 
     <main class="container" id="lixi-grid"></main>
@@ -28,7 +34,7 @@
         <div class="banner-content">
             <h2 id="win-text">Chúc mừng!</h2>
             <p id="regret-text"></p>
-            <button onclick="location.reload()">Đóng</button>
+            <button class="btn-close" onclick="location.reload()">Nhận Lộc</button>
         </div>
     </div>
 
@@ -36,11 +42,10 @@
         <div class="lock-box">
             <h2>🏮 HẾT LƯỢT 🏮</h2>
             <p>Mày đã bốc lì xì rồi tham lam gì :))</p>
+            <small style="display:block; margin-top:10px; opacity:0.6">Hẹn gặp lại bạn vào năm sau!</small>
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
-    <main class="container" id="lixi-grid">
-    </main>
 </html>
