@@ -1,81 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-    <title>Admin Lì Xì 2026</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Noto+Serif+SC&display=swap" rel="stylesheet">
-    <style>
-        body { background: #0a0a0f; color: #f1c40f; font-family: 'JetBrains+Mono', monospace; padding: 20px; }
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: #13131a; padding: 20px; border-radius: 8px; border-left: 4px solid var(--gold); }
-        table { width: 100%; border-collapse: collapse; background: #13131a; }
-        th, td { padding: 12px; border: 1px solid #222; text-align: left; }
-        .login-overlay { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; z-index: 2000; }
-        input { background: #1a1a1a; border: 1px solid #f1c40f; color: white; padding: 10px; }
-        button { background: #f1c40f; color: black; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
-        .hidden { display: none; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Lì Xì Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div id="login-screen" class="login-overlay">
-        <div>
-            <h2>ADMIN ACCESS</h2>
-            <input type="password" id="admin-pass" placeholder="Mật khẩu">
-            <button onclick="login()">VÀO</button>
+<body class="admin-body">
+    <div id="admin-login" class="admin-overlay">
+        <div class="login-card">
+            <h3>Quản Trị Viên</h3>
+            <input type="password" id="admin-pw" placeholder="Mật khẩu...">
+            <button onclick="login()">Đăng Nhập</button>
         </div>
     </div>
 
-    <div id="admin-content" class="hidden">
-        <h1>BÁO CÁO LÌ XÌ 2026</h1>
-        <div class="stat-grid">
-            <div class="stat-card">Tổng lượt: <span id="total-count">0</span></div>
-            <div class="stat-card">Tổng tiền: <span id="total-money">0</span>đ</div>
-            <button onclick="exportCSV()">XUẤT CSV</button>
-            <button onclick="resetData()" style="background:red; color:white">RESET TẤT CẢ</button>
+    <div id="admin-panel" class="admin-container hidden">
+        <header class="admin-header">
+            <h2>DASHBOARD 2026</h2>
+            <div class="admin-actions">
+                <button onclick="exportCSV()">📥 Xuất CSV</button>
+                <button class="danger" onclick="resetSystem()">🗑 Reset Toàn Bộ</button>
+                <button onclick="logout()">⇠ Thoát</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card"><h4>Tổng lượt</h4><p id="stat-total">0</p></div>
+            <div class="stat-card"><h4>Tổng tiền</h4><p id="stat-money">0đ</p></div>
+            <div class="stat-card"><h4>Hôm nay</h4><p id="stat-today">0</p></div>
+            <div class="stat-card"><h4>Trung bình</h4><p id="stat-avg">0đ</p></div>
         </div>
-        <table id="log-table">
-            <thead><tr><th>Tên</th><th>Số tiền</th><th>Thời gian</th><th>Device ID</th></tr></thead>
-            <tbody id="log-body"></tbody>
-        </table>
+
+        <div class="table-container">
+            <div class="table-tools">
+                <input type="text" id="search" placeholder="Tìm tên..." oninput="renderTable()">
+            </div>
+            <table id="log-table">
+                <thead>
+                    <tr>
+                        <th>Tên</th>
+                        <th>Số tiền</th>
+                        <th>ID Thiết bị</th>
+                        <th>Thời gian</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
     </div>
-
-    <script>
-        function login() {
-            const pass = document.getElementById('admin-pass').value;
-            const saved = localStorage.getItem('admin_password') || 'admin2026';
-            if (pass === saved) {
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('admin-content').classList.remove('hidden');
-                loadData();
-            } else alert('Sai mật khẩu!');
-        }
-
-        function loadData() {
-            const logs = JSON.parse(localStorage.getItem('lixi_log') || '[]');
-            const tbody = document.getElementById('log-body');
-            tbody.innerHTML = logs.map(l => `<tr><td>${l.name}</td><td>${l.amount}</td><td>${l.time}</td><td>${l.deviceId}</td></tr>`).join('');
-            
-            document.getElementById('total-count').innerText = logs.length;
-            document.getElementById('total-money').innerText = logs.reduce((a, b) => a + b.amount, 0).toLocaleString();
-        }
-
-        function resetData() {
-            if(confirm("Xóa sạch dữ liệu và reset lượt bốc?")) {
-                Object.keys(localStorage).forEach(key => {
-                    if(key.startsWith('lixi2026_') || key === 'lixi_log') localStorage.removeItem(key);
-                });
-                location.reload();
-            }
-        }
-
-        function exportCSV() {
-            const logs = JSON.parse(localStorage.getItem('lixi_log') || '[]');
-            let csv = "Ten,So Tien,Thoi Gian,DeviceID\n";
-            logs.forEach(l => { csv += `${l.name},${l.amount},${l.time},${l.deviceId}\n`; });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'lixi_report_2026.csv'; a.click();
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
